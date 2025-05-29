@@ -6,7 +6,10 @@
       <h1 class="text-xl font-bold">Orthanc Study Viewer</h1>
     </div>
     <StudyFilter @search="fetchStudies" />
-    <StudyTable :studies="paginatedStudies" />
+    <div v-if="isLoading" class="flex items-center justify-center h-full">
+      <v-progress-circular indeterminate color="primary" />
+    </div>
+    <StudyTable :studies="paginatedStudies" v-else />
     <Pagination
       :total-items="filteredStudies.length"
       :page-size="pageSize"
@@ -38,6 +41,7 @@ export default {
       filteredStudies: [],
       currentPage: 1,
       pageSize: 10,
+      isLoading: true,
     };
   },
   computed: {
@@ -48,14 +52,17 @@ export default {
   },
   methods: {
     fetchStudies(filters) {
+      this.isLoading = true;
       axiosClient.axiosClient
         .post("notes/orthanc/search", filters || {})
         .then((response) => {
           this.filteredStudies = response.data;
           this.currentPage = 1;
+          this.isLoading = false;
         })
         .catch((error) => {
           console.error("Failed to fetch studies:", error);
+          this.isLoading = false;
         });
     },
   },

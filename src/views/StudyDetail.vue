@@ -20,7 +20,7 @@
     </div> -->
     <div class="w-full h-full overflow-hidden">
       <div
-        class="w-full flex flex-row justify-between bg-neutral-700 px-3 py-2"
+        class="w-full flex flex-row justify-between items-center bg-neutral-700 px-3 py-2"
       >
         <div>
           <v-btn
@@ -50,12 +50,11 @@
           </div>
         </div>
         <div class="w-36">
-          <v-menu>
+          <v-menu v-if="selectedTab?.title === 'Image'">
             <template v-slot:activator="{ props }">
               <div
                 v-bind="props"
                 class="px-3 py-2 bg-white rounded-full text-neutral-600 text-sm"
-                v-if="selectedTab?.title === 'Image'"
               >
                 {{ selectedViewer.name }}
               </div>
@@ -72,6 +71,15 @@
               </v-list-item>
             </v-list>
           </v-menu>
+          <v-btn
+            v-else-if="selectedTab?.title === 'Reading'"
+            color="primary"
+            @click="saveReading()"
+            elevation="0"
+            class="w-full"
+          >
+            Save Reading
+          </v-btn>
         </div>
       </div>
       <!-- {{ selectedViewer }} -->
@@ -98,35 +106,53 @@
           v-if="selectedTab?.title === 'Reading' && study"
           class="w-full h-full bg-white absolute top-0 left-0 z-10 p-4"
         >
-          <h2 class="text-lg font-bold mb-4">Study Details</h2>
-          <div>
-            <p>
-              <strong>Patient ID:</strong>
-              {{ study.PatientMainDicomTags.PatientID }}
-            </p>
-            <p>
-              <strong>Patient Name:</strong>
-              {{ study.PatientMainDicomTags.PatientName }}
-            </p>
-            <p>
-              <strong>Study Date:</strong> {{ study.MainDicomTags.StudyDate }}
-            </p>
-            <p>
-              <strong>Study Time:</strong> {{ study.MainDicomTags.StudyTime }}
-            </p>
-            <p>
-              <strong>Study Instance UID:</strong>
-              {{ study.MainDicomTags.StudyInstanceUID }}
-            </p>
-            <v-textarea
-              v-model="readingNotes"
-              rows="4"
-              label="Notes"
-              variant="outlined"
-              density="compact"
-              class="mt-4"
-            ></v-textarea>
-            <!-- Add more details as needed -->
+          <div class="flex">
+            <div class="bg-orange-500 text-white px-4 py-1 text-sm">
+              Study ID: {{ study.MainDicomTags.StudyInstanceUID }}
+            </div>
+          </div>
+          <!-- <editor v-model="content" />
+
+          <div class="output-group">
+            <label>Content</label>
+            <code>{{ content }}</code>
+          </div> -->
+          <div class="w-full flex flex-row gap-3 overflow-hidden px-5 py-5">
+            <div
+              class="w-96 h-full bg-white border-[1px] border-neutral-300 overflow-y-auto px-3 py-3"
+            >
+              <p>
+                <strong>Patient ID:</strong>
+                {{ study.PatientMainDicomTags.PatientID }}
+              </p>
+              <p>
+                <strong>Patient Name:</strong>
+                {{ study.PatientMainDicomTags.PatientName }}
+              </p>
+              <p>
+                <strong>Study Date:</strong> {{ study.MainDicomTags.StudyDate }}
+              </p>
+              <p>
+                <strong>Study Time:</strong> {{ study.MainDicomTags.StudyTime }}
+              </p>
+              <!-- <p>
+                <strong>Study Instance UID:</strong>
+                {{ study.MainDicomTags.StudyInstanceUID }}
+              </p> -->
+              <!-- v-model="readingNotes" -->
+
+              <!-- Add more details as needed -->
+            </div>
+            <div class="w-full h-full">
+              <v-textarea
+                height="100%"
+                rows="4"
+                label="Reading Notes"
+                variant="outlined"
+                density="compact"
+                v-model="content"
+              ></v-textarea>
+            </div>
           </div>
         </div>
       </div>
@@ -134,9 +160,13 @@
   </div>
 </template>
 <script>
-import axiosClient from "@/webClient/API"; // Adjust the import path as necessary
+import axiosClient from "@/webClient/API";
+import Editor from "@/components/Editor.vue";
 export default {
   name: "study-detail",
+  components: {
+    Editor,
+  },
   mounted() {
     this.refresh();
   },
@@ -173,6 +203,9 @@ export default {
         },
       ],
 
+      content:
+        "<p>A Vue.js wrapper component for Tiptap to use <code>v-model</code>.</p>",
+
       isLoading: false,
       study: null, // This will hold the study data
     };
@@ -190,40 +223,73 @@ export default {
       //http://localhost:3000/notes/orthanc/studies/9fcadbc3-58807fe5-05a2969e-ab4aafaa-af735eaa
       this.isLoading = true;
       this.study = null; // Reset study data before fetching
-      axiosClient.axiosClient
-        .get("notes/orthanc/studies/" + this.$route.params.id)
-        .then((response) => {
-          console.log("Study details fetched:", response.data);
-          this.study = response.data;
-          this.viewerOptions.find(
-            (viewer) => viewer.name === "Stone Web Viewer"
-          ).url = this.viewerOptions
-            .find((viewer) => viewer.name === "Stone Web Viewer")
-            .url.replace(
-              "STUDY_INSTANCE_UID",
-              this.study.MainDicomTags.StudyInstanceUID
-            );
 
-          this.viewerOptions.find(
-            (viewer) => viewer.name === "OHIF Viewer"
-          ).url = this.viewerOptions
-            .find((viewer) => viewer.name === "OHIF Viewer")
-            .url.replace(
-              "STUDY_INSTANCE_UID",
-              this.study.MainDicomTags.StudyInstanceUID
-            );
+      let promises = [];
 
-          this.viewerOptions.find(
-            (viewer) => viewer.name === "Kitware's VolView"
-          ).url = this.viewerOptions
-            .find((viewer) => viewer.name === "Kitware's VolView")
-            .url.replace("STUDY_ID", this.study.ID);
+      promises.push(
+        axiosClient.axiosClient
+          .get("notes/orthanc/studies/" + this.$route.params.id)
+          .then((response) => {
+            console.log("Study details fetched:", response.data);
+            this.study = response.data;
+            this.viewerOptions.find(
+              (viewer) => viewer.name === "Stone Web Viewer"
+            ).url = this.viewerOptions
+              .find((viewer) => viewer.name === "Stone Web Viewer")
+              .url.replace(
+                "STUDY_INSTANCE_UID",
+                this.study.MainDicomTags.StudyInstanceUID
+              );
 
+            this.viewerOptions.find(
+              (viewer) => viewer.name === "OHIF Viewer"
+            ).url = this.viewerOptions
+              .find((viewer) => viewer.name === "OHIF Viewer")
+              .url.replace(
+                "STUDY_INSTANCE_UID",
+                this.study.MainDicomTags.StudyInstanceUID
+              );
+
+            this.viewerOptions.find(
+              (viewer) => viewer.name === "Kitware's VolView"
+            ).url = this.viewerOptions
+              .find((viewer) => viewer.name === "Kitware's VolView")
+              .url.replace("STUDY_ID", this.study.ID);
+
+            // this.isLoading = false;
+            return Promise.resolve(response.data);
+          })
+          .catch((error) => {
+            console.error("Failed to fetch study details:", error);
+            // this.isLoading = false;
+            return Promise.reject(error);
+          })
+      );
+
+      promises.push(
+        axiosClient.axiosClient
+          .get("notes/studies/" + this.$route.params.id)
+          .then((response) => {
+            console.log("Study notes fetched:", response.data);
+            this.content = response.data.content || "";
+            // this.isLoading = false;
+            return Promise.resolve(response.data);
+          })
+          .catch((error) => {
+            console.error("Failed to fetch study notes:", error);
+            // this.isLoading = false;
+            return Promise.reject(error);
+          })
+      );
+
+      Promise.all(promises)
+        .then(() => {
           this.isLoading = false;
+          console.log("All data fetched successfully");
         })
         .catch((error) => {
-          console.error("Failed to fetch study details:", error);
           this.isLoading = false;
+          console.error("Error fetching data:", error);
         });
     },
     selectTab(tab) {
@@ -241,6 +307,26 @@ export default {
     handleIframeLoad() {
       // Handle any actions after the iframe loads, if necessary
       console.log("Iframe loaded successfully");
+    },
+    saveReading() {
+      this.isSavingReading = true;
+      axiosClient.axiosClient
+        .post("notes", {
+          title: "Reading for " + this.study.MainDicomTags.StudyInstanceUID,
+          content: this.content,
+          referenceId: this.study.ID,
+          metadata: JSON.stringify(this.study),
+        })
+        .then((response) => {
+          console.log("Reading saved successfully:", response.data);
+          this.isSavingReading = false;
+          // Optionally, you can show a success message or update the UI
+        })
+        .catch((error) => {
+          console.error("Failed to save reading:", error);
+          this.isSavingReading = false;
+          // Handle error (e.g., show notification)
+        });
     },
   },
 };
