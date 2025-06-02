@@ -30,19 +30,23 @@
       variant="outlined"
       density="compact"
     />
-    <v-text-field
+    <v-select
       v-model="query.ModalitiesInStudy"
-      label="Modality (CT, MR, etc.)"
-      class=""
+      :items="modalities"
+      item-title="code"
+      item-value="code"
+      label="Modality"
       variant="outlined"
       density="compact"
+      clearable
     />
-    <button
+    <v-btn
+      color="primary"
       type="submit"
       class="col-span-full bg-blue-500 text-white px-4 py-2 rounded"
     >
       Search
-    </button>
+    </v-btn>
   </form>
 </template>
 
@@ -56,11 +60,43 @@ export default {
         StudyDate: "",
         ModalitiesInStudy: "",
       },
+      modalities: [
+        { code: "CR", name: "Computed Radiography" },
+        { code: "CT", name: "Computed Tomography" },
+        { code: "MR", name: "Magnetic Resonance" },
+        { code: "US", name: "Ultrasound" },
+        { code: "XA", name: "X-Ray Angiography" },
+        { code: "RF", name: "Radio Fluoroscopy" },
+        { code: "NM", name: "Nuclear Medicine" },
+        { code: "MG", name: "Mammography" },
+        { code: "DX", name: "Digital Radiography" },
+        { code: "PT", name: "Positron Emission Tomography" },
+        { code: "SC", name: "Secondary Capture" },
+        { code: "ES", name: "Endoscopy" },
+        { code: "XC", name: "External Camera Photography" },
+        { code: "IO", name: "Intra-Oral Radiography" },
+        { code: "OP", name: "Ophthalmic Photography" },
+        { code: "OT", name: "Other" },
+        {
+          code: "RG",
+          name: "Radiographic Imaging (conventional film/screen)",
+        },
+        { code: "SM", name: "Slide Microscopy" },
+        { code: "VL", name: "Visible Light Photography" },
+      ],
     };
   },
   methods: {
     submit() {
-      this.$emit("search", this.query);
+      console.log("Search query:", this.query);
+      this.$emit("search", {
+        PatientName: this.query.PatientName,
+        PatientID: this.query.PatientID,
+        StudyDate: this.query.StudyDate,
+        ModalitiesInStudy: this.query.ModalitiesInStudy
+          ? this.query.ModalitiesInStudy
+          : "",
+      });
     },
   },
 };

@@ -36,6 +36,7 @@
           block
           class="mt-2"
           :disabled="!formValid"
+          :loading="isLoading"
         >
           Login
         </v-btn>
@@ -62,6 +63,7 @@ export default {
       rules: {
         required: (value) => !!value || "Required.",
       },
+      isLoading: false,
     };
   },
   computed: {
@@ -72,6 +74,7 @@ export default {
   methods: {
     submitForm() {
       if (this.formValid) {
+        this.isLoading = true;
         // Handle login logic here
         console.log("Logging in with:", this.email, this.password);
         // Redirect or perform login action
@@ -86,10 +89,12 @@ export default {
             localStorage.setItem("accessToken", response.data.access_token);
             // Redirect to dashboard or home page
             this.$router.push({ name: "home" });
+            this.isLoading = false;
           })
           .catch((error) => {
             console.error("Login failed:", error);
             // Handle error (e.g., show notification)
+            this.isLoading = false;
           });
       } else {
         console.error("Form is invalid");

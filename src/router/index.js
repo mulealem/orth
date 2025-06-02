@@ -31,4 +31,27 @@ const router = createRouter({
   ],
 });
 
+// Helper to check if JWT is expired
+function isTokenExpired(token) {
+  if (!token) return true;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    // exp is in seconds, Date.now() in ms
+    return payload.exp * 1000 < Date.now();
+  } catch (e) {
+    return true;
+  }
+}
+
+// Navigation guard to check authentication
+router.beforeEach((to, from, next) => {
+  if (to.name !== "login") {
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken || isTokenExpired(accessToken)) {
+      return next({ name: "login" });
+    }
+  }
+  next();
+});
+
 export default router;
